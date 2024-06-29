@@ -68,6 +68,29 @@ export const appRouter = router({
     return files;
   }),
 
+  getFile: privateProcedure
+    .input(z.object({ key: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const { key } = input;
+      const { userId } = ctx;
+
+      const file = await prisma.file.findFirst({
+        where: {
+          key,
+          userId,
+        },
+      });
+
+      if (!file) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "File not found",
+        });
+      }
+
+      return file;
+    }),
+
   // mutation is used for api calls like post, put, delete which changes the state of the server
   // get the input that is validated by zod into the mutation function
   deleteFile: privateProcedure
