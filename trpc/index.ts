@@ -3,6 +3,9 @@ import { privateProcedure, publicProcedure, router } from "./trpc";
 import { TRPCError } from "@trpc/server";
 import prisma from "@/db";
 import { z } from "zod";
+import { absoluteUrl } from "@/lib/utils";
+import { PLANS } from "@/config/stripe";
+import { getUserSubscriptionPlan, stripe } from "@/lib/stripe";
 
 // Here comes all the api routes logic
 export const appRouter = router({
@@ -91,6 +94,24 @@ export const appRouter = router({
       return file;
     }),
 
+  getFileUploadStatus: privateProcedure
+    .input(z.object({ fileId: z.string() }))
+    .query(async ({ ctx, input }) => {
+      const file = await prisma.file.findFirst({
+        where: {
+          id: input.fileId,
+          userId: ctx.userId,
+        },
+      });
+
+      // if the file is not found, return pending. as const is used to tell typescript that the value is a constant and is a valid value
+      if (!file) {
+        return { status: "PENDING" as const };
+      }
+
+      return { status: file.uploadStatus };
+    }),
+
   // mutation is used for api calls like post, put, delete which changes the state of the server
   // get the input that is validated by zod into the mutation function
   deleteFile: privateProcedure
@@ -126,6 +147,53 @@ export const appRouter = router({
 
       return deletedFile;
     }),
+
+  // create stripe session
+  createStripeSession: privateProcedure.mutation(async ({ ctx }) => {
+    const { userId } = ctx;
+
+    const billingUrl = absoluteUrl("/dashboard/billing");
+
+    if (!userId) throw new TRPCError({ code: "UNAUTHORIZED" });
+
+    const dbUser = await prisma.user.findFirst({
+      where: {
+        id: userId,
+      },
+    });
+
+    if (!dbUser) throw new TRPCError({ code: "UNAUTHORIZED" });
+
+    const subscriptionPlan = await getUserSubscriptionPlan();
+
+    if (subscriptionPlan.isSubscribed && dbUser.stripeCustomerId) {
+      const stripeSession = await stripe.billingPortal.sessions.create({
+        customer: dbUser.stripeCustomerId,
+        return_url: billingUrl,
+      });
+
+      return { url: stripeSession.url };
+    }
+
+    const stripeSession = await stripe.checkout.sessions.create({
+      success_url: billingUrl,
+      cancel_url: billingUrl,
+      payment_method_types: ["card", "paypal"],
+      mode: "subscription",
+      billing_address_collection: "auto",
+      line_items: [
+        {
+          price: PLANS.find((plan) => plan.name === "Pro")?.price.priceIds.test,
+          quantity: 1,
+        },
+      ],
+      metadata: {
+        userId: userId,
+      },
+    });
+
+    return { url: stripeSession.url };
+  }),
 });
 
 // Export type router type signature,

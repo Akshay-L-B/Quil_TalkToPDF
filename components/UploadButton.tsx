@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Dialog, DialogTrigger, DialogContent } from "./ui/dialog";
+import { Dialog, DialogTrigger, DialogContent, DialogTitle } from "./ui/dialog";
 import { Button } from "./ui/button";
 import Dropzone from "react-dropzone";
 import { Cloud, File, Loader2 } from "lucide-react";
@@ -10,6 +10,7 @@ import { useUploadThing } from "@/lib/uploadthings";
 import { useToast } from "./ui/use-toast";
 import { trpc } from "@/app/_trpc/client";
 import { useRouter } from "next/navigation";
+import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 
 const UploadDropzone = () => {
   const router = useRouter();
@@ -180,6 +181,9 @@ const UploadButton = () => {
       </DialogTrigger>
 
       <DialogContent>
+        <VisuallyHidden>
+          <DialogTitle title="Upload PDF" />
+        </VisuallyHidden>
         <UploadDropzone />
       </DialogContent>
     </Dialog>

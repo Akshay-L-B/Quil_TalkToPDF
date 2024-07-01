@@ -14,7 +14,6 @@ const middleware = t.middleware;
 const isAuthenticated = middleware(async (opts) => {
   const { getUser } = getKindeServerSession();
   const user = await getUser();
-  console.log("Checking if user is authenticated", user);
 
   // if the user is not authenticated, then throw an error with the code UNAUTHORIZED to the client
   if (!user || !user.id) {
