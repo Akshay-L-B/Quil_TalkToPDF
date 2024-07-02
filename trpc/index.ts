@@ -6,6 +6,7 @@ import { z } from "zod";
 import { absoluteUrl } from "@/lib/utils";
 import { PLANS } from "@/config/stripe";
 import { getUserSubscriptionPlan, stripe } from "@/lib/stripe";
+import { INFINITE_QUERY_LIMIT } from "@/config/infinite-query";
 
 // Here comes all the api routes logic
 export const appRouter = router({
@@ -22,8 +23,8 @@ export const appRouter = router({
     }
 
     //now check if the user is in the database
-
-    const userInDatabase = prisma.user.findUnique({
+    console.log("User in the database", user.id, user.email);
+    const userInDatabase = await prisma.user.findUnique({
       where: {
         id: user.id,
       },
@@ -47,7 +48,6 @@ export const appRouter = router({
       }
     }
 
-    console.log(userInDatabase);
     //if true, return success
     return { success: true };
   }),
@@ -146,6 +146,65 @@ export const appRouter = router({
       });
 
       return deletedFile;
+    }),
+
+  getFileMessages: privateProcedure
+    .input(
+      z.object({
+        fileId: z.string(),
+        limit: z.number().min(1).max(100).nullish(),
+        cursor: z.string().nullish(),
+      })
+    )
+    .query(async ({ ctx, input }) => {
+      const { fileId, cursor } = input;
+
+      // Since limit can be null, we have to pass a default value of 10
+      const limit = input.limit ?? INFINITE_QUERY_LIMIT;
+      const { userId } = ctx;
+
+      const file = await prisma.file.findFirst({
+        where: {
+          id: fileId,
+          userId,
+        },
+      });
+
+      if (!file) {
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "File not found",
+        });
+      }
+
+      const messages = await prisma.message.findMany({
+        select: {
+          id: true,
+          isUserMessage: true,
+          createdAt: true,
+          text: true,
+        },
+        where: {
+          fileId,
+        },
+        take: limit + 1, // +1 to check if there are more messages and placing the cursor at that message
+        cursor: cursor ? { id: cursor } : undefined,
+        orderBy: {
+          createdAt: "desc",
+        },
+      });
+
+      // define the cursor logic
+      let nextCursor: typeof cursor | undefined = undefined;
+      if (messages.length > limit) {
+        const nextItem = messages.pop(); // cuz we have taken in the descending order
+        nextCursor = nextItem?.id;
+      }
+
+      return {
+        messages,
+        nextCursor,
+      };
     }),
 
   // create stripe session

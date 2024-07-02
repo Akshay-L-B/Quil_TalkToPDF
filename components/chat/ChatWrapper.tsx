@@ -6,6 +6,7 @@ import { ChevronLeft, Loader2, XCircle } from "lucide-react";
 import ChatInput from "./ChatInput";
 import Link from "next/link";
 import { buttonVariants } from "../ui/button";
+import { ChatContextProvider } from "./ChatContext";
 
 interface ChatWrapperProps {
   fileId: string;
@@ -13,8 +14,13 @@ interface ChatWrapperProps {
 
 const ChatWrapper = ({ fileId }: ChatWrapperProps) => {
   console.log("From ChatWrapper, fileId is", fileId);
-  const { data, isLoading } = trpc.getFileUploadStatus.useQuery({ fileId });
-  console.log("Current status is", data?.status);
+  const { data, isLoading } = trpc.getFileUploadStatus.useQuery(
+    { fileId },
+    {
+      retry: true,
+      retryDelay: 1000,
+    }
+  );
 
   if (isLoading)
     return (
@@ -77,14 +83,17 @@ const ChatWrapper = ({ fileId }: ChatWrapperProps) => {
     );
 
   return (
-    <div className="relative min-h-full bg-zinc-50 flex divide-y divide-zinc-200 flex-col justify-between gap-2">
-      {/* This is the message section */}
-      <div className="flex-1 justify-between flex flex-col mb-28">
-        <Messages />
-      </div>
+    <ChatContextProvider fileId={fileId}>
+      <div className="relative min-h-full bg-zinc-50 flex divide-y divide-zinc-200 flex-col justify-between gap-2">
+        {/* This is the message section */}
+        <div className="flex-1 justify-between flex flex-col mb-28">
+          <Messages fileId={fileId} />
+        </div>
 
-      {/* This is the chat input section */}
-    </div>
+        {/* This is the chat input section */}
+        <ChatInput isDisabled={false} />
+      </div>
+    </ChatContextProvider>
   );
 };
 

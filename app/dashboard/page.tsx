@@ -25,14 +25,13 @@ const page = async () => {
     },
   });
 
-  // if (!userDB) {
-  //   console.log(
-  //     "User not found in the database, redirecting to auth-callback page"
-  //   );
-  //   return redirect("/auth-callback?origin=dashboard");
-  // }
+  if (!userDB) {
+    console.log(
+      "User not found in the database, redirecting to auth-callback page"
+    );
+    return redirect("/auth-callback?origin=dashboard");
+  }
 
-  console.log(user);
   return <Dashboard />;
 };
 

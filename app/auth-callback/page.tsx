@@ -10,28 +10,10 @@ const Page = () => {
   const searchParams = useSearchParams();
   const origin = searchParams.get("origin");
 
-  // trpc.authCallback.useQuery(undefined, {
-  //   // onSuccess: ({ success }) => {
-  //   //   if (success) {
-  //   //     router.push(origin ? `/${origin}` : "/dashboard");
-  //   //     console.log("User is now authenticated and in the database");
-  //   //   }
-  //   // },
-
-  //   // onError: (error: any) => {
-  //   //   if (error?.data?.code === "UNAUTHORIZED") {
-  //   //     router.push(`/sign-in`);
-  //   //   }
-  //   //   console.error(error);
-  //   // },
-
-  //   // retry on error until success for every 500ms
-  //   retry: true,
-  //   retryDelay: 500,
-  // });
-
+  // Call the authCallback procedure
   const { data } = trpc.authCallback.useQuery();
 
+  // If the user is sync with the database redirect to the origin
   useEffect(() => {
     if (data && data.success) {
       router.push(origin ? `/${origin}` : "/dashboard");
@@ -40,7 +22,7 @@ const Page = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data]);
 
-  // if user is not sync with the database
+  // if user is not sync with the database show loading until he is created
   return (
     <div className="w-full mt-24 flex justify-center">
       <div className="flex flex-col items-center gap-2">
